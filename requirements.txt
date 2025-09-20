@@ -1,0 +1,18 @@
+fastapi==0.95.2
+uvicorn[standard]==0.22.0
+python-dotenv==1.0.0
+azure-servicebus==7.15.0
+requests==2.31.0
+
+
+
+# Service Bus: either emulator or real namespace connection string
+SERVICEBUS_CONNECTION_STRING=Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=ANY;UseDevelopmentEmulator=true;
+SERVICEBUS_QUEUE=incidents
+
+# Worker behavior
+WORKER_RECEIVE_WAIT=10
+
+# Where worker can post results (if you use that endpoint)
+RESULT_CALLBACK_URL=http://localhost:7071/process_result
+PROCESSOR_TIMEOUT=300
