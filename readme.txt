@@ -1,89 +1,40 @@
-6) Step-by-step PowerShell commands to run everything
+3 — Run instructions (PowerShell, copy/paste)
 
-Open VS Code and three terminals: Terminal A (FastAPI), Terminal B (Worker #1), Terminal C (Worker #2 optional). Also have Terminal D (for tests).
+1.Ensure you have a Python venv & installed requirements. From soc-triage/src:
 
-A — Prepare project & venv (once)
 cd C:\path\to\soc-triage\src
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install --upgrade pip
-pip install -r requirements.txt
-# copy .env.example to .env and edit if needed:
-Copy-Item .env.example .env
+pip install fastapi uvicorn python-dotenv azure-servicebus requests
+# (or pip install -r requirements.txt if you have the file)
 
 
-Open .env and ensure SERVICEBUS_CONNECTION_STRING is correct for your emulator or real Azure.
+2.Put the .env (from step 0) in soc-triage/src/.env.
 
-B — Start Service Bus emulator (if you want local dev)
+3.Start FastAPI (Terminal A):
 
-You can either:
-
-Use Microsoft Service Bus Emulator (requires Docker & the installer repo). If you have it, run its LaunchEmulator.sh in WSL or follow its README.
-
-Or point SERVICEBUS_CONNECTION_STRING to a real Azure Service Bus namespace connection string.
-
-(If you need exact emulator install steps, tell me and I’ll paste them. For now assume emulator is running and listening.)
-
-C — Run FastAPI (Terminal A)
 cd C:\path\to\soc-triage\src
 .venv\Scripts\Activate.ps1
-# ensure .env is in same folder (we loaded python-dotenv in code)
 uvicorn webhook_servicebus:app --host 0.0.0.0 --port 7071 --reload
 
 
-You should see Uvicorn running on http://0.0.0.0:7071.
-
-D — Run Worker(s) (Terminal B, Terminal C, ...)
-
-Open Terminal B:
+4.Start Worker (Terminal B). IMPORTANT: run from project root and set PYTHONPATH so from src... resolves:
 
 cd C:\path\to\soc-triage
 .venv\Scripts\Activate.ps1
-# set PYTHONPATH so 'src' package imports work:
+# set PYTHONPATH to the inner src package folder:
 $env:PYTHONPATH = (Resolve-Path ".\src").Path
+# run worker
 python .\src\worker_servicebus_oneper.py
 
 
-Optionally open Terminal C and repeat to start another worker for parallel processing.
+Start more workers (Terminal C, D...) repeating Step 4 to get parallel processing — Service Bus will distribute messages.
 
-Each worker will log status and pick messages from the Service Bus queue.
+5.Send a test webhook (Terminal D):
 
-E — Test by sending webhook (Terminal D)
-
-Use PowerShell so quoting is easy:
-
-$body = @{ incident_id = "INC-TEST-1" } | ConvertTo-Json
+$body = @{ incident_id = "12345" } | ConvertTo-Json
 Invoke-RestMethod -Uri "http://localhost:7071/webhook" -Method POST -Body $body -ContentType "application/json" -Verbose
 
 
-Expected:
-
-FastAPI terminal logs Enqueued ...
-
-One of the worker terminals logs fetching payload, calls triage_automation (your module prints/display), then completes the message.
-
-If you want to simulate triage_automation failure, modify the stub to raise an exception and watch the worker log the CRITICAL message with stack trace and abandon the message so it gets retried/ eventually DLQed.
-
-7) Troubleshooting checklist
-
-If worker ImportError for src.api...:
-
-Ensure you ran worker from project root and set PYTHONPATH to .\src (the inner package root).
-
-Confirm the folder soc-triage/src/src/api/soar/client.py exists (two levels: project src, and package src). If your package is named differently, change imports accordingly.
-
-If Service Bus connection fails:
-
-Confirm emulator is running OR your cloud connection string is correct.
-
-If emulator, ensure Endpoint=sb://localhost and UseDevelopmentEmulator=true (emulator docs may require different SAS key).
-
-If messages never get processed:
-
-Check worker logs to ensure it connected and polling.
-
-Use Azure CLI or SDK to peek messages in queue to see if they are enqueued.
-
-If FastAPI returns missing incident_id:
-
-Ensure you POST JSON correctly using PowerShell Invoke-RestMethod or curl.exe with proper escaping.
+Watch FastAPI logs and the worker terminal(s). Worker should fetch payload via your unifiedsoarclient, call triage_automation, and then complete the message.
