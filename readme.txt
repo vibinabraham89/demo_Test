@@ -12,6 +12,10 @@ pip install fastapi uvicorn python-dotenv azure-servicebus requests
 
 2.Put the .env (from step 0) in soc-triage/src/.env.
 
+SERVICEBUS_CONNECTION_STRING=Endpoint=sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=Eby8vdM02xNOcqFlqUwJ7r1dvbjG3rJHB5Bsn4I4k9E=;UseDevelopmentEmulator=true;
+SERVICEBUS_QUEUE=incidents
+RESULT_CALLBACK_URL=http://localhost:7071/process_result
+
 3.Start FastAPI (Terminal A):
 
 cd C:\path\to\soc-triage\src
@@ -38,3 +42,4 @@ Invoke-RestMethod -Uri "http://localhost:7071/webhook" -Method POST -Body $body 
 
 
 Watch FastAPI logs and the worker terminal(s). Worker should fetch payload via your unifiedsoarclient, call triage_automation, and then complete the message.
+
